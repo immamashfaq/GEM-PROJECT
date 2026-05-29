@@ -1,0 +1,1 @@
+{"version":3,"file":"offers.d.ts","sourceRoot":"","sources":["offers.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,CAAC,EAAE,MAAM,KAAK,CAAC;AAExB,eAAO,MAAM,iBAAiB;;;;;;;;;;;;EAI5B,CAAC;AAEH,MAAM,MAAM,gBAAgB,GAAG,CAAC,CAAC,KAAK,CAAC,OAAO,iBAAiB,CAAC,CAAC;AAEjE,eAAO,MAAM,kBAAkB;;;;;;;;;EAG7B,CAAC;AAEH,MAAM,MAAM,iBAAiB,GAAG,CAAC,CAAC,KAAK,CAAC,OAAO,kBAAkB,CAAC,CAAC"}

@@ -1,0 +1,244 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================================
+   CSS CUSTOM PROPERTIES — Design Tokens
+   ============================================================================ */
+
+:root {
+  --color-bg: #080d1a;
+  --color-card: #0e1628;
+  --color-border: #1e2d4e;
+  --color-gold: #C9A84C;
+  --color-gold-light: #e4c46a;
+  --color-text-primary: #f0f4ff;
+  --color-text-secondary: #8a9cc4;
+  --color-text-muted: #4a5568;
+
+  --radius-card: 12px;
+  --radius-button: 8px;
+  --radius-input: 8px;
+
+  --shadow-card: 0 0 0 1px rgba(201,168,76,0.08), 0 4px 24px rgba(0,0,0,0.35);
+  --shadow-card-hover: 0 0 0 1px rgba(201,168,76,0.25), 0 8px 32px rgba(0,0,0,0.5);
+
+  --transition-fast: 150ms ease;
+  --transition-base: 250ms ease;
+  --transition-slow: 400ms ease;
+}
+
+/* ============================================================================
+   BASE STYLES
+   ============================================================================ */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  font-family: 'Inter', system-ui, sans-serif;
+  line-height: 1.6;
+  min-height: 100vh;
+  background-image: radial-gradient(ellipse at 20% 0%, rgba(26, 39, 71, 0.6) 0%, transparent 50%),
+                    radial-gradient(ellipse at 80% 0%, rgba(201, 168, 76, 0.04) 0%, transparent 50%);
+}
+
+/* ============================================================================
+   TYPOGRAPHY
+   ============================================================================ */
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.display-text {
+  font-family: 'Playfair Display', Georgia, serif;
+}
+
+/* ============================================================================
+   COMPONENT CLASSES
+   ============================================================================ */
+
+@layer components {
+  /* Cards */
+  .card-gem {
+    @apply bg-[#0e1628] border border-[#1e2d4e] rounded-xl;
+    box-shadow: var(--shadow-card);
+    transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base);
+  }
+
+  .card-gem:hover {
+    box-shadow: var(--shadow-card-hover);
+    border-color: rgba(201, 168, 76, 0.25);
+    transform: translateY(-2px);
+  }
+
+  /* Buttons */
+  .btn-gold {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg font-semibold text-sm;
+    @apply text-navy-900 transition-all duration-200;
+    background: linear-gradient(135deg, #C9A84C 0%, #e4c46a 50%, #C9A84C 100%);
+    background-size: 200% 100%;
+    background-position: 100% 0;
+  }
+
+  .btn-gold:hover {
+    background-position: 0% 0;
+    box-shadow: 0 0 20px rgba(201, 168, 76, 0.4);
+    transform: translateY(-1px);
+  }
+
+  .btn-gold:active {
+    transform: translateY(0);
+  }
+
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg font-semibold text-sm;
+    @apply border border-[#1e2d4e] text-[#8a9cc4] bg-transparent;
+    @apply hover:border-gold-500 hover:text-gold-500 transition-all duration-200;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium text-sm;
+    @apply text-[#8a9cc4] hover:text-white hover:bg-white/5 transition-all duration-150;
+  }
+
+  /* Inputs */
+  .input-gem {
+    @apply w-full px-4 py-3 rounded-lg text-sm bg-[#0a0f1e] border border-[#1e2d4e];
+    @apply text-white placeholder-[#4a5568];
+    @apply focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/30;
+    @apply transition-all duration-200;
+  }
+
+  /* Badges */
+  .badge-verified {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold;
+    @apply bg-gold-500/15 text-gold-400 border border-gold-500/20;
+  }
+
+  .badge-certified {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold;
+    @apply bg-emerald-500/15 text-emerald-400 border border-emerald-500/20;
+  }
+
+  .badge-live {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold;
+    @apply bg-red-500 text-white;
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  .badge-auction {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold;
+    @apply bg-purple-500/15 text-purple-400 border border-purple-500/20;
+  }
+
+  /* Section divider with gold accent */
+  .section-title {
+    @apply relative pb-3 mb-8;
+  }
+
+  .section-title::after {
+    content: '';
+    @apply absolute bottom-0 left-0 h-0.5 w-12 bg-gold-500 rounded-full;
+  }
+
+  /* Skeleton shimmer */
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      rgba(255,255,255,0.03) 0%,
+      rgba(255,255,255,0.08) 50%,
+      rgba(255,255,255,0.03) 100%
+    );
+    background-size: 1000px 100%;
+    animation: shimmer 2s linear infinite;
+  }
+
+  /* Glass effect */
+  .glass {
+    @apply backdrop-blur-md border border-white/5;
+    background: rgba(14, 22, 40, 0.7);
+  }
+
+  /* Scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-[#1e2d4e] rounded-full;
+  }
+}
+
+/* ============================================================================
+   UTILITY CLASSES
+   ============================================================================ */
+
+@layer utilities {
+  .text-gradient-gold {
+    background: linear-gradient(135deg, #C9A84C, #e4c46a, #C9A84C);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .border-gold-subtle {
+    border-color: rgba(201, 168, 76, 0.15);
+  }
+
+  .bg-card-glass {
+    background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
+  }
+
+  .bg-grid-pattern {
+    background-image: radial-gradient(circle, rgba(201, 168, 76, 0.3) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+}
+
+/* ============================================================================
+   ANIMATIONS
+   ============================================================================ */
+
+@keyframes shimmer {
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.4s ease-out forwards;
+}

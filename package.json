@@ -1,0 +1,51 @@
+{
+  "name": "gem-project",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Gem Project — Production-grade C2C gemstone marketplace for Sri Lanka",
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "dev:api": "turbo run dev --filter=@gem/api",
+    "dev:web": "turbo run dev --filter=@gem/web",
+    "dev:mobile": "turbo run dev --filter=@gem/mobile",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "lint:fix": "turbo run lint:fix",
+    "type-check": "turbo run type-check",
+    "test": "turbo run test",
+    "test:api": "pnpm --filter @gem/api test",
+    "test:web": "pnpm --filter @gem/web test",
+    "clean": "turbo run clean && rimraf node_modules",
+    "db:generate": "prisma generate --schema=./prisma/schema.prisma",
+    "db:migrate": "prisma migrate dev --schema=./prisma/schema.prisma",
+    "db:migrate:prod": "prisma migrate deploy --schema=./prisma/schema.prisma",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:reset": "prisma migrate reset --schema=./prisma/schema.prisma",
+    "db:studio": "prisma studio --schema=./prisma/schema.prisma",
+    "db:push": "prisma db push --schema=./prisma/schema.prisma",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,css}\" --ignore-path .gitignore",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,css}\" --ignore-path .gitignore"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.3",
+    "prettier": "^3.4.2",
+    "rimraf": "^6.0.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "prisma": "^6.2.1"
+  },
+  "pnpm": {
+    "overrides": {
+      "@types/react": "^19.0.2",
+      "@types/react-dom": "^19.0.2"
+    }
+  },
+  "dependencies": {
+    "@prisma/client": "^6.2.1"
+  }
+}

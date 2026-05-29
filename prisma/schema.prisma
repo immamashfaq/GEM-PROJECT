@@ -1,0 +1,954 @@
+// =============================================================================
+// Gem Project — Complete Prisma Schema
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum UserRole {
+  BUYER
+  SELLER
+  VERIFIED_SELLER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum KycStatus {
+  NOT_SUBMITTED
+  PENDING
+  APPROVED
+  REJECTED
+  NEEDS_MORE_INFO
+}
+
+enum ListingType {
+  FIXED_PRICE
+  NEGOTIABLE
+  TIMED_AUCTION
+  LIVE_AUCTION
+}
+
+enum ListingStatus {
+  DRAFT
+  ACTIVE
+  SOLD
+  EXPIRED
+  SUSPENDED
+  DELETED
+}
+
+enum NaturalStatus {
+  NATURAL
+  SYNTHETIC
+  LAB_GROWN
+}
+
+enum MountedStatus {
+  LOOSE
+  MOUNTED
+}
+
+enum Currency {
+  LKR
+  USD
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+}
+
+enum OfferStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  COUNTERED
+  EXPIRED
+  WITHDRAWN
+}
+
+enum AuctionStatus {
+  SCHEDULED
+  LIVE
+  ENDED
+  CANCELLED
+  SETTLED
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  SELLER_CONFIRMED
+  PACKED
+  SHIPPED
+  DELIVERED
+  COMPLETED
+  CANCELLED
+  DISPUTED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  INITIATED
+  PENDING
+  PAID
+  FAILED
+  CANCELLED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  WAITING_FOR_BUYER
+  WAITING_FOR_SELLER
+  RESOLVED_BUYER
+  RESOLVED_SELLER
+  REFUNDED
+  CLOSED
+}
+
+enum ReportType {
+  LISTING
+  USER
+  STREAM
+  REVIEW
+  AUCTION
+  MESSAGE
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  ACTIONED
+  DISMISSED
+}
+
+enum NotificationType {
+  BID_OUTBID
+  BID_ACCEPTED
+  AUCTION_WON
+  AUCTION_ENDED
+  OFFER_RECEIVED
+  OFFER_ACCEPTED
+  OFFER_REJECTED
+  OFFER_COUNTERED
+  ORDER_CREATED
+  ORDER_PAID
+  ORDER_SHIPPED
+  ORDER_DELIVERED
+  DISPUTE_OPENED
+  DISPUTE_RESOLVED
+  KYC_APPROVED
+  KYC_REJECTED
+  KYC_NEEDS_INFO
+  LISTING_PUBLISHED
+  LISTING_SOLD
+  LISTING_EXPIRING
+  NEW_REVIEW
+  SYSTEM
+}
+
+enum StreamStatus {
+  CREATED
+  SCHEDULED
+  LIVE
+  ENDED
+  CANCELLED
+  FLAGGED
+  SUSPENDED
+}
+
+// =============================================================================
+// USER & AUTHENTICATION
+// =============================================================================
+
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  username        String    @unique
+  passwordHash    String
+  fullName        String?
+  avatarUrl       String?
+  role            UserRole  @default(BUYER)
+  isEmailVerified Boolean   @default(false)
+  emailVerificationToken String? @unique
+  passwordResetToken     String? @unique
+  passwordResetExpires   DateTime?
+  isActive        Boolean   @default(true)
+  deletedAt       DateTime?
+  lastLoginAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  sessions         UserSession[]
+  sellerProfile    SellerProfile?
+  listings         Listing[]
+  watchlist        Watchlist[]
+  offersAsBuyer    Offer[]          @relation("BuyerOffers")
+  offersAsSeller   Offer[]          @relation("SellerOffers")
+  bids             Bid[]
+  ordersAsBuyer    Order[]          @relation("BuyerOrders")
+  ordersAsSeller   Order[]          @relation("SellerOrders")
+  reviewsGiven     Review[]         @relation("ReviewerReviews")
+  reviewsReceived  Review[]         @relation("SellerReviews")
+  reportsSubmitted Report[]
+  assignedReports  Report[]         @relation("AssignedReports")
+  notifications    Notification[]
+  deviceTokens     DeviceToken[]
+  savedSearches    SavedSearch[]
+  streamViewer     StreamViewer[]
+  chatMessages     StreamChatMessage[]
+  auditLogs        AuditLog[]
+  disputes         Dispute[]        @relation("BuyerDisputes")
+
+  @@index([email])
+  @@index([username])
+  @@index([role])
+  @@index([createdAt])
+  @@map("users")
+}
+
+model UserSession {
+  id            String   @id @default(cuid())
+  userId        String
+  refreshToken  String   @unique
+  deviceInfo    String?
+  ipAddress     String?
+  userAgent     String?
+  expiresAt     DateTime
+  isRevoked     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([refreshToken])
+  @@index([expiresAt])
+  @@map("user_sessions")
+}
+
+// =============================================================================
+// SELLER PROFILE & KYC
+// =============================================================================
+
+model SellerProfile {
+  id                  String    @id @default(cuid())
+  userId              String    @unique
+  businessName        String?
+  bio                 String?   @db.Text
+  location            String?
+  phone               String?
+  website             String?
+  kycStatus           KycStatus @default(NOT_SUBMITTED)
+  isVerified          Boolean   @default(false)
+  verifiedAt          DateTime?
+  averageRating       Decimal?  @db.Decimal(3, 2)
+  totalReviews        Int       @default(0)
+  completedSales      Int       @default(0)
+  responseRatePercent Decimal?  @db.Decimal(5, 2)
+  totalViews          Int       @default(0)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kycSubmissions KycSubmission[]
+  liveStreams    LiveStream[]
+
+  @@index([kycStatus])
+  @@index([isVerified])
+  @@map("seller_profiles")
+}
+
+model KycSubmission {
+  id              String    @id @default(cuid())
+  sellerProfileId String
+  legalName       String
+  address         String    @db.Text
+  phone           String
+  status          KycStatus @default(PENDING)
+  adminNotes      String?   @db.Text
+  rejectionReason String?   @db.Text
+  reviewedAt      DateTime?
+  reviewedBy      String?   // Admin user ID
+  submittedAt     DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  sellerProfile SellerProfile  @relation(fields: [sellerProfileId], references: [id], onDelete: Cascade)
+  documents     KycDocument[]
+
+  @@index([sellerProfileId])
+  @@index([status])
+  @@map("kyc_submissions")
+}
+
+model KycDocument {
+  id              String   @id @default(cuid())
+  submissionId    String
+  documentType    String   // NIC_FRONT, NIC_BACK, UTILITY_BILL, BUSINESS_REG
+  storageKey      String   // S3/MinIO key (private)
+  originalFilename String
+  mimeType        String
+  sizeBytes       Int
+  isVerified      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  submission KycSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId])
+  @@map("kyc_documents")
+}
+
+// =============================================================================
+// GEM CATEGORIES & TREATMENTS
+// =============================================================================
+
+model GemCategory {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  slug        String    @unique
+  description String?
+  iconUrl     String?
+  isActive    Boolean   @default(true)
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  listings Listing[]
+
+  @@index([slug])
+  @@index([isActive])
+  @@map("gem_categories")
+}
+
+model GemTreatment {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  @@index([slug])
+  @@map("gem_treatments")
+}
+
+// =============================================================================
+// LISTINGS
+// =============================================================================
+
+model Listing {
+  id          String        @id @default(cuid())
+  sellerId    String
+  categoryId  String
+  title       String
+  description String        @db.Text
+  slug        String        @unique
+
+  // Gem attributes
+  gemType        String
+  variety        String?
+  originCountry  String?
+  originRegion   String?
+  caratWeight    Decimal?  @db.Decimal(10, 4)
+  color          String?
+  clarity        String?
+  cut            String?
+  shape          String?
+  dimensionsMm   String?
+  treatment      String?
+  isHeatTreated  Boolean?
+  transparency   String?
+  refractiveIndex Decimal? @db.Decimal(6, 4)
+  specificGravity Decimal? @db.Decimal(6, 3)
+  hardness       Decimal?  @db.Decimal(4, 2)
+  isCertified    Boolean   @default(false)
+  naturalStatus  NaturalStatus @default(NATURAL)
+  mountedStatus  MountedStatus @default(LOOSE)
+
+  // Pricing
+  currency          Currency    @default(LKR)
+  listingType       ListingType
+  fixedPrice        Decimal?    @db.Decimal(14, 2)
+  negotiablePrice   Decimal?    @db.Decimal(14, 2)
+  minAcceptableOffer Decimal?   @db.Decimal(14, 2)
+  auctionStartPrice Decimal?    @db.Decimal(14, 2)
+  reservePrice      Decimal?    @db.Decimal(14, 2)
+  minBidIncrement   Decimal?    @db.Decimal(14, 2)
+  auctionStartsAt   DateTime?
+  auctionEndsAt     DateTime?
+  autoExtend        Boolean     @default(true)
+
+  // Stats
+  viewCount     Int @default(0)
+  watchCount    Int @default(0)
+  favoriteCount Int @default(0)
+  reportCount   Int @default(0)
+
+  // Status & moderation
+  status         ListingStatus @default(DRAFT)
+  isFeatured     Boolean       @default(false)
+  isPromoted     Boolean       @default(false)
+  isSuspicious   Boolean       @default(false)
+  adminNotes     String?       @db.Text
+  publishedAt    DateTime?
+  expiresAt      DateTime?
+  deletedAt      DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  // Full-text search vector
+  searchVector   Unsupported("tsvector")?
+
+  // Relations
+  seller      User          @relation(fields: [sellerId], references: [id])
+  category    GemCategory   @relation(fields: [categoryId], references: [id])
+  media       ListingMedia[]
+  certificate GemCertificate?
+  watchlist   Watchlist[]
+  offers      Offer[]
+  auction     Auction?
+  orders      Order[]
+  reports     Report[]
+  liveStreams LiveStream[]
+
+  @@index([sellerId])
+  @@index([categoryId])
+  @@index([status])
+  @@index([listingType])
+  @@index([isFeatured])
+  @@index([publishedAt])
+  @@index([auctionEndsAt])
+  @@index([gemType])
+  @@index([originCountry])
+  @@index([caratWeight])
+  @@index([fixedPrice])
+  @@index([slug])
+  @@map("listings")
+}
+
+model ListingMedia {
+  id         String    @id @default(cuid())
+  listingId  String
+  url        String
+  publicId   String    // Cloudinary public_id
+  mediaType  MediaType @default(IMAGE)
+  isThumbnail Boolean  @default(false)
+  sortOrder  Int       @default(0)
+  width      Int?
+  height     Int?
+  sizeBytes  Int?
+  createdAt  DateTime  @default(now())
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
+  @@index([isThumbnail])
+  @@map("listing_media")
+}
+
+model GemCertificate {
+  id                String    @id @default(cuid())
+  listingId         String    @unique
+  labName           String
+  certificateNumber String?
+  verificationUrl   String?
+  fileUrl           String?
+  filePublicId      String?   // Cloudinary public_id (if image)
+  storageKey        String?   // S3 key (if PDF, private)
+  issuedAt          DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@map("gem_certificates")
+}
+
+// =============================================================================
+// WATCHLIST
+// =============================================================================
+
+model Watchlist {
+  id        String   @id @default(cuid())
+  userId    String
+  listingId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, listingId])
+  @@index([userId])
+  @@index([listingId])
+  @@map("watchlist")
+}
+
+// =============================================================================
+// OFFERS
+// =============================================================================
+
+model Offer {
+  id          String      @id @default(cuid())
+  listingId   String
+  buyerId     String
+  sellerId    String
+  amount      Decimal     @db.Decimal(14, 2)
+  currency    Currency    @default(LKR)
+  status      OfferStatus @default(PENDING)
+  message     String?     @db.Text
+  expiresAt   DateTime
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  listing Listing        @relation(fields: [listingId], references: [id])
+  buyer   User           @relation("BuyerOffers", fields: [buyerId], references: [id])
+  seller  User           @relation("SellerOffers", fields: [sellerId], references: [id])
+  history OfferHistory[]
+  order   Order?
+
+  @@index([listingId])
+  @@index([buyerId])
+  @@index([sellerId])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("offers")
+}
+
+model OfferHistory {
+  id        String      @id @default(cuid())
+  offerId   String
+  status    OfferStatus
+  amount    Decimal     @db.Decimal(14, 2)
+  actorId   String      // user who took the action
+  note      String?     @db.Text
+  createdAt DateTime    @default(now())
+
+  offer Offer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  @@index([offerId])
+  @@map("offer_history")
+}
+
+// =============================================================================
+// AUCTIONS & BIDS
+// =============================================================================
+
+model Auction {
+  id              String        @id @default(cuid())
+  listingId       String        @unique
+  status          AuctionStatus @default(SCHEDULED)
+  startPrice      Decimal       @db.Decimal(14, 2)
+  currentPrice    Decimal?      @db.Decimal(14, 2)
+  reservePrice    Decimal?      @db.Decimal(14, 2)
+  minBidIncrement Decimal       @db.Decimal(14, 2) @default(100)
+  currency        Currency      @default(LKR)
+  startsAt        DateTime
+  endsAt          DateTime
+  extendedAt      DateTime?
+  endedAt         DateTime?
+  winnerId        String?
+  winningBidId    String?
+  totalBids       Int           @default(0)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  listing Listing @relation(fields: [listingId], references: [id])
+  bids    Bid[]
+  reports Report[]
+
+  @@index([status])
+  @@index([endsAt])
+  @@map("auctions")
+}
+
+model Bid {
+  id          String   @id @default(cuid())
+  auctionId   String
+  bidderId    String
+  amount      Decimal  @db.Decimal(14, 2)
+  currency    Currency @default(LKR)
+  isWinning   Boolean  @default(false)
+  isRetracted Boolean  @default(false)
+  ipAddress   String?
+  idempotencyKey String? @unique
+  createdAt   DateTime @default(now())
+
+  auction Auction @relation(fields: [auctionId], references: [id])
+  bidder  User    @relation(fields: [bidderId], references: [id])
+
+  @@index([auctionId])
+  @@index([bidderId])
+  @@index([isWinning])
+  @@index([createdAt])
+  @@map("bids")
+}
+
+// =============================================================================
+// LIVE STREAMS
+// =============================================================================
+
+model LiveStream {
+  id                String       @id @default(cuid())
+  sellerProfileId   String
+  listingId         String?
+  title             String
+  description       String?      @db.Text
+  status            StreamStatus @default(CREATED)
+  streamKey         String?
+  playbackUrl       String?
+  rtmpUrl           String?
+  providerReference String?
+  thumbnailUrl      String?
+  viewerCount       Int          @default(0)
+  peakViewers       Int          @default(0)
+  startedAt         DateTime?
+  endedAt           DateTime?
+  durationSeconds   Int?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  sellerProfile SellerProfile      @relation(fields: [sellerProfileId], references: [id])
+  listing       Listing?           @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  viewers       StreamViewer[]
+  chatMessages  StreamChatMessage[]
+  reports       Report[]
+
+  @@index([sellerProfileId])
+  @@index([listingId])
+  @@index([status])
+  @@index([startedAt])
+  @@map("live_streams")
+}
+
+model StreamViewer {
+  id        String   @id @default(cuid())
+  streamId  String
+  userId    String?
+  sessionId String?  // for guests
+  joinedAt  DateTime @default(now())
+  leftAt    DateTime?
+
+  stream LiveStream @relation(fields: [streamId], references: [id], onDelete: Cascade)
+  user   User?      @relation(fields: [userId], references: [id])
+
+  @@index([streamId])
+  @@index([userId])
+  @@map("stream_viewers")
+}
+
+model StreamChatMessage {
+  id         String   @id @default(cuid())
+  streamId   String
+  userId     String
+  message    String   @db.Text
+  isPinned   Boolean  @default(false)
+  isDeleted  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  stream LiveStream @relation(fields: [streamId], references: [id], onDelete: Cascade)
+  user   User       @relation(fields: [userId], references: [id])
+  reports Report[]
+
+  @@index([streamId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("stream_chat_messages")
+}
+
+// =============================================================================
+// ORDERS & PAYMENTS
+// =============================================================================
+
+model Order {
+  id          String      @id @default(cuid())
+  listingId   String
+  buyerId     String
+  sellerId    String
+  offerId     String?     @unique
+  bidId       String?
+  orderNumber String      @unique @default(cuid())
+
+  status      OrderStatus @default(PENDING_PAYMENT)
+  currency    Currency    @default(LKR)
+  subtotal    Decimal     @db.Decimal(14, 2)
+  platformFee Decimal     @db.Decimal(14, 2) @default(0)
+  total       Decimal     @db.Decimal(14, 2)
+
+  // Commission & Payout Tracking
+  commissionRate      Decimal?    @db.Decimal(5, 2)
+  sellerPayoutAmount  Decimal?    @db.Decimal(14, 2)
+  payoutStatus        String?     @default("PENDING")
+  paymentProviderFee  Decimal?    @db.Decimal(14, 2)
+  paymentDeadline     DateTime?
+
+  // Shipping
+  shippingAddress Json?
+  shippingMethod  String?
+
+  // Notes
+  buyerNotes  String?  @db.Text
+  sellerNotes String?  @db.Text
+  adminNotes  String?  @db.Text
+
+  // Timeline
+  paidAt       DateTime?
+  shippedAt    DateTime?
+  deliveredAt  DateTime?
+  completedAt  DateTime?
+  cancelledAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  listing  Listing   @relation(fields: [listingId], references: [id])
+  buyer    User      @relation("BuyerOrders", fields: [buyerId], references: [id])
+  seller   User      @relation("SellerOrders", fields: [sellerId], references: [id])
+  offer    Offer?    @relation(fields: [offerId], references: [id])
+  payment  Payment?
+  shipment Shipment?
+  review   Review?
+  dispute  Dispute?
+
+  @@index([buyerId])
+  @@index([sellerId])
+  @@index([listingId])
+  @@index([status])
+  @@index([orderNumber])
+  @@map("orders")
+}
+
+model Payment {
+  id                String        @id @default(cuid())
+  orderId           String        @unique
+  status            PaymentStatus @default(PENDING)
+  provider          String        // stripe, payhere, webxpay
+  providerPaymentId String?
+  amount            Decimal       @db.Decimal(14, 2)
+  currency          Currency      @default(LKR)
+  metadata          Json?
+  idempotencyKey    String?       @unique
+  paidAt            DateTime?
+  failedAt          DateTime?
+  refundedAt        DateTime?
+  proofUrl          String?
+  providerFee       Decimal?      @db.Decimal(14, 2)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
+  @@index([status])
+  @@index([providerPaymentId])
+  @@map("payments")
+}
+
+model Shipment {
+  id             String    @id @default(cuid())
+  orderId        String    @unique
+  recipientName  String?
+  address        String?
+  city           String?
+  country        String?
+  phone          String?
+  courierName    String?
+  trackingNumber String?
+  trackingUrl    String?
+  shippedAt      DateTime?
+  estimatedDelivery DateTime?
+  deliveredAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@map("shipments")
+}
+
+// =============================================================================
+// REVIEWS
+// =============================================================================
+
+model Review {
+  id              String   @id @default(cuid())
+  orderId         String   @unique
+  reviewerId      String
+  sellerId        String
+  overallRating   Int      // 1-5
+  accuracyRating  Int?     // 1-5
+  communicationRating Int? // 1-5
+  shippingRating  Int?     // 1-5
+  comment         String?  @db.Text
+  isVerified      Boolean  @default(true) // always true if from completed order
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  order     Order @relation(fields: [orderId], references: [id])
+  reviewer  User  @relation("ReviewerReviews", fields: [reviewerId], references: [id])
+  seller    User  @relation("SellerReviews", fields: [sellerId], references: [id])
+
+  @@index([sellerId])
+  @@index([reviewerId])
+  @@map("reviews")
+}
+
+// =============================================================================
+// REPORTS & DISPUTES
+// =============================================================================
+
+model Report {
+  id          String       @id @default(cuid())
+  reporterId  String
+  type        ReportType
+  status      ReportStatus @default(PENDING)
+  reason      String
+  description String?      @db.Text
+  adminNotes  String?      @db.Text
+  resolvedAt  DateTime?
+  resolvedBy  String?
+  assignedToId String?
+
+  // Polymorphic references (only one will be set)
+  listingId String?
+  streamId  String?
+  userId    String?
+  auctionId String?
+  messageId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reporter User        @relation(fields: [reporterId], references: [id])
+  listing  Listing?    @relation(fields: [listingId], references: [id])
+  stream   LiveStream? @relation(fields: [streamId], references: [id])
+  assignedTo User?     @relation("AssignedReports", fields: [assignedToId], references: [id])
+  auction  Auction?    @relation(fields: [auctionId], references: [id])
+  message  StreamChatMessage? @relation(fields: [messageId], references: [id])
+
+  @@index([status])
+  @@index([type])
+  @@index([reporterId])
+  @@map("reports")
+}
+
+model Dispute {
+  id          String        @id @default(cuid())
+  orderId     String        @unique
+  buyerId     String
+  status      DisputeStatus @default(OPEN)
+  reason      String
+  description String        @db.Text
+  evidence    Json?         // array of file URLs
+  adminNotes  String?       @db.Text
+  resolution  String?       @db.Text
+  resolvedAt  DateTime?
+  resolvedBy  String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id])
+  buyer User  @relation("BuyerDisputes", fields: [buyerId], references: [id])
+
+  @@index([status])
+  @@index([buyerId])
+  @@map("disputes")
+}
+
+// =============================================================================
+// NOTIFICATIONS
+// =============================================================================
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  data      Json?
+  isRead    Boolean          @default(false)
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+// =============================================================================
+// DEVICE TOKENS (Push Notifications)
+// =============================================================================
+
+model DeviceToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  platform  String   // ios, android, web
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isActive])
+  @@map("device_tokens")
+}
+
+// =============================================================================
+// SAVED SEARCHES
+// =============================================================================
+
+model SavedSearch {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  filters     Json
+  alertEnabled Boolean @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("saved_searches")
+}
+
+// =============================================================================
+// AUDIT LOG
+// =============================================================================
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  action    String   // e.g., "kyc.document.viewed", "user.suspended"
+  resource  String   // resource type
+  resourceId String? // resource ID
+  metadata  Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id])
+
+  @@index([actorId])
+  @@index([action])
+  @@index([resource])
+  @@index([createdAt])
+  @@map("audit_logs")
+}

@@ -1,0 +1,29 @@
+{
+  "extends": "@gem/tsconfig/nextjs.json",
+  "compilerOptions": {
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ],
+      "@gem/config": [
+        "../../packages/config/src/index.ts"
+      ],
+      "@gem/types": [
+        "../../packages/types/src/index.ts"
+      ],
+      "@gem/validators": [
+        "../../packages/validators/src/index.ts"
+      ]
+    },
+    "noEmit": true
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
