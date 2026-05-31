@@ -1,6 +1,7 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
+  "globalEnv": ["ESLINT_USE_FLAT_CONFIG"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
