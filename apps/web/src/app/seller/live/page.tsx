@@ -9,6 +9,7 @@ import { useStreamChat } from '@/hooks/useStreamChat';
 import { Radio, Copy, Check, Send, AlertTriangle, Play, LogOut, Loader2, ArrowLeft } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import Link from 'next/link';
+import { ExternalVideoPlayer } from '@/components/ExternalVideoPlayer';
 
 export default function SellerLivePage() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthStore();
@@ -20,6 +21,8 @@ export default function SellerLivePage() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [activeStream, setActiveStream] = useState<any>(null);
+  const [streamSource, setStreamSource] = useState<'studio' | 'external'>('studio');
+  const [externalUrl, setExternalUrl] = useState('');
 
   // Chat message state
   const [chatInput, setChatInput] = useState('');
@@ -95,17 +98,22 @@ export default function SellerLivePage() {
 
   // Create stream mutation
   const createStreamMutation = useMutation({
-    mutationFn: async (data: { title: string; description: string }) => {
+    mutationFn: async (data: { title: string; description: string; externalUrl?: string }) => {
       const res = await api.streams.create({
         title: data.title,
         description: data.description,
+        externalUrl: data.externalUrl,
       });
       return res.data.data;
     },
     onSuccess: (stream) => {
       // Store credentials locally because they are sensitive/one-off
-      localStorage.setItem(`stream_key_${stream.id}`, stream.streamKey);
-      localStorage.setItem(`stream_url_${stream.id}`, stream.rtmpUrl);
+      if (stream.streamKey) {
+        localStorage.setItem(`stream_key_${stream.id}`, stream.streamKey);
+      }
+      if (stream.rtmpUrl) {
+        localStorage.setItem(`stream_url_${stream.id}`, stream.rtmpUrl);
+      }
       
       setActiveStream(stream);
       queryClient.invalidateQueries({ queryKey: ['active-streams'] });
@@ -143,9 +151,14 @@ export default function SellerLivePage() {
       toast.error('Title must be at least 5 characters');
       return;
     }
+    if (streamSource === 'external' && !externalUrl.trim()) {
+      toast.error('Please enter a valid external live video URL');
+      return;
+    }
     createStreamMutation.mutate({
       title: title.trim(),
       description: description.trim(),
+      externalUrl: streamSource === 'external' ? externalUrl.trim() : undefined,
     });
   };
 
@@ -336,6 +349,51 @@ export default function SellerLivePage() {
                   />
                 </div>
 
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1.5">Stream Source</label>
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <button
+                      type="button"
+                      onClick={() => setStreamSource('studio')}
+                      className={`p-3 rounded-lg border text-xs font-semibold transition-all text-center ${
+                        streamSource === 'studio'
+                          ? 'border-gold-500 bg-gold-500/10 text-white'
+                          : 'border-[#1e2d4e] bg-[#0a0f1e]/40 text-gray-400 hover:border-gold-500/30'
+                      }`}
+                    >
+                      OBS / Streamlabs Studio
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setStreamSource('external')}
+                      className={`p-3 rounded-lg border text-xs font-semibold transition-all text-center ${
+                        streamSource === 'external'
+                          ? 'border-gold-500 bg-gold-500/10 text-white'
+                          : 'border-[#1e2d4e] bg-[#0a0f1e]/40 text-gray-400 hover:border-gold-500/30'
+                      }`}
+                    >
+                      External (Facebook, YT, Twitch)
+                    </button>
+                  </div>
+
+                  {streamSource === 'external' && (
+                    <div className="space-y-2 animate-fadeIn">
+                      <label className="block text-xs font-medium text-gray-400">Live Video URL</label>
+                      <input
+                        type="url"
+                        required
+                        value={externalUrl}
+                        onChange={(e) => setExternalUrl(e.target.value)}
+                        placeholder="e.g., https://www.facebook.com/watch/live/?v=..."
+                        className="input-gem text-xs"
+                      />
+                      <p className="text-[10px] text-gray-500">
+                        Paste the public share URL of your Facebook Live video, YouTube Live stream, or Twitch channel.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
                 <button
                   type="submit"
                   disabled={createStreamMutation.isPending}
@@ -383,55 +441,75 @@ export default function SellerLivePage() {
                 )}
               </div>
 
-              {/* OBS Configuration */}
-              <div className="card-gem p-6">
-                <h3 className="text-base font-semibold text-white mb-4">Streaming Credentials (OBS / Streamlabs)</h3>
-                <p className="text-xs text-gray-400 mb-6 leading-relaxed">
-                  Open your encoding software (e.g., OBS Studio), go to **Settings &gt; Stream**, select **Custom Service**, and enter the following settings:
-                </p>
+              {/* Stream Feed / OBS Credentials */}
+              {activeStream.playbackUrl && (
+                activeStream.playbackUrl.includes('facebook.com') ||
+                activeStream.playbackUrl.includes('youtube.com') ||
+                activeStream.playbackUrl.includes('youtu.be') ||
+                activeStream.playbackUrl.includes('twitch.tv')
+              ) ? (
+                /* External Feed Preview */
+                <div className="card-gem p-6">
+                  <h3 className="text-base font-semibold text-white mb-4">External Stream Linked</h3>
+                  <div className="aspect-video w-full mb-4 border border-[#1e2d4e] rounded-lg overflow-hidden">
+                    <ExternalVideoPlayer src={activeStream.playbackUrl} />
+                  </div>
+                  <p className="text-xs text-gray-400 leading-relaxed">
+                    Your stream is linked from <strong className="text-gold-400">{activeStream.playbackUrl}</strong>.
+                    Viewers can watch the live broadcast directly on the <Link href={`/live/${activeStream.id}`} className="text-gold-400 underline hover:text-gold-300">Discovery Page</Link>.
+                  </p>
+                </div>
+              ) : (
+                /* Traditional OBS Credentials */
+                <div className="card-gem p-6">
+                  <h3 className="text-base font-semibold text-white mb-4">Streaming Credentials (OBS / Streamlabs)</h3>
+                  <p className="text-xs text-gray-400 mb-6 leading-relaxed">
+                    Open your encoding software (e.g., OBS Studio), go to **Settings &gt; Stream**, select **Custom Service**, and enter the following settings:
+                  </p>
 
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Server (RTMP URL)</label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        readOnly
-                        value={activeStream.rtmpUrl}
-                        className="bg-[#0a0f1e] border border-[#1e2d4e] rounded-lg px-3 py-2 text-xs text-gray-400 w-full focus:outline-none"
-                      />
-                      <button
-                        onClick={() => copyToClipboard(activeStream.rtmpUrl, 'url')}
-                        className="w-10 h-9 rounded-lg border border-[#1e2d4e] bg-[#0e1628] hover:border-gold-500/40 flex items-center justify-center shrink-0 transition-colors"
-                      >
-                        {copiedUrl ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} className="text-gray-400" />}
-                      </button>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Server (RTMP URL)</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          readOnly
+                          value={activeStream.rtmpUrl}
+                          className="bg-[#0a0f1e] border border-[#1e2d4e] rounded-lg px-3 py-2 text-xs text-gray-400 w-full focus:outline-none"
+                        />
+                        <button
+                          onClick={() => copyToClipboard(activeStream.rtmpUrl, 'url')}
+                          className="w-10 h-9 rounded-lg border border-[#1e2d4e] bg-[#0e1628] hover:border-gold-500/40 flex items-center justify-center shrink-0 transition-colors"
+                        >
+                          {copiedUrl ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} className="text-gray-400" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Stream Key</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="password"
+                          readOnly
+                          value={activeStream.streamKey}
+                          className="bg-[#0a0f1e] border border-[#1e2d4e] rounded-lg px-3 py-2 text-xs text-gray-400 w-full focus:outline-none tracking-widest"
+                        />
+                        <button
+                          onClick={() => copyToClipboard(activeStream.streamKey, 'key')}
+                          className="w-10 h-9 rounded-lg border border-[#1e2d4e] bg-[#0e1628] hover:border-gold-500/40 flex items-center justify-center shrink-0 transition-colors"
+                        >
+                          {copiedKey ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} className="text-gray-400" />}
+                        </button>
+                      </div>
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Stream Key</label>
-                    <div className="flex gap-2">
-                      <input
-                        type="password"
-                        readOnly
-                        value={activeStream.streamKey}
-                        className="bg-[#0a0f1e] border border-[#1e2d4e] rounded-lg px-3 py-2 text-xs text-gray-400 w-full focus:outline-none tracking-widest"
-                      />
-                      <button
-                        onClick={() => copyToClipboard(activeStream.streamKey, 'key')}
-                        className="w-10 h-9 rounded-lg border border-[#1e2d4e] bg-[#0e1628] hover:border-gold-500/40 flex items-center justify-center shrink-0 transition-colors"
-                      >
-                        {copiedKey ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} className="text-gray-400" />}
-                      </button>
-                    </div>
+                  <div className="mt-6 p-4 bg-navy-950/40 border border-[#1e2d4e] rounded-lg text-xs text-gray-400 leading-relaxed">
+                    <strong className="text-gold-400">Important:</strong> Keep your stream key private. Anyone with access can hijack your live broadcast. Once you start sending feed from OBS, buyers will automatically see the live video on the <Link href={`/live/${activeStream.id}`} className="text-gold-400 underline hover:text-gold-300">Discovery Page</Link>.
                   </div>
                 </div>
-
-                <div className="mt-6 p-4 bg-navy-950/40 border border-[#1e2d4e] rounded-lg text-xs text-gray-400 leading-relaxed">
-                  <strong className="text-gold-400">Important:</strong> Keep your stream key private. Anyone with access can hijack your live broadcast. Once you start sending feed from OBS, buyers will automatically see the live video on the <Link href={`/live/${activeStream.id}`} className="text-gold-400 underline hover:text-gold-300">Discovery Page</Link>.
-                </div>
-              </div>
+              )}
             </div>
 
             {/* RIGHT Column: Live Chat Panel */}

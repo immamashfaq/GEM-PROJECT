@@ -5,6 +5,7 @@ export const createStreamSchema = z.object({
   description: z.string().optional(),
   thumbnailUrl: z.string().url().optional(),
   listingId: z.string().optional(),
+  externalUrl: z.string().url('Invalid URL format').or(z.literal('')).optional(),
 });
 
 export type CreateStreamInput = z.infer<typeof createStreamSchema>;

@@ -10,6 +10,7 @@ import { Users, Send, AlertTriangle } from 'lucide-react';
 import { formatRelativeTime } from '@/lib/utils';
 import Hls from 'hls.js';
 import Link from 'next/link';
+import { ExternalVideoPlayer } from '@/components/ExternalVideoPlayer';
 
 function LiveVideoPlayer({ src }: { src: string }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -165,6 +166,12 @@ export default function StreamViewerPage() {
   }
 
   const isStreamEnded = stream.status === 'ENDED';
+  const isExternal = stream.playbackUrl && (
+    stream.playbackUrl.includes('facebook.com') ||
+    stream.playbackUrl.includes('youtube.com') ||
+    stream.playbackUrl.includes('youtu.be') ||
+    stream.playbackUrl.includes('twitch.tv')
+  );
 
   return (
     <div className="pt-20 min-h-screen flex flex-col md:flex-row bg-[#02040a]">
@@ -177,6 +184,8 @@ export default function StreamViewerPage() {
               <h2 className="text-2xl font-bold text-white mb-2">Broadcast Ended</h2>
               <p className="text-gray-400">Thanks for watching.</p>
             </div>
+          ) : isExternal ? (
+            <ExternalVideoPlayer src={stream.playbackUrl} />
           ) : (
             <LiveVideoPlayer src={stream.playbackUrl} />
           )}

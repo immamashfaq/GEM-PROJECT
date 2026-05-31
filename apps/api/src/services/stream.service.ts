@@ -39,9 +39,20 @@ export class StreamService {
       }
     }
 
-    // Fetch stream ingest details from provider registry
-    const provider = streamingRegistry.get(providerName);
-    const session = await provider.createStream(data.title, data.description || '');
+    let streamKey: string | null = null;
+    let playbackUrl: string | null = data.externalUrl || null;
+    let rtmpUrl: string | null = null;
+    let providerReference: string | null = null;
+
+    if (!data.externalUrl) {
+      // Fetch stream ingest details from provider registry
+      const provider = streamingRegistry.get(providerName);
+      const session = await provider.createStream(data.title, data.description || '');
+      streamKey = session.streamKey;
+      playbackUrl = session.playbackUrl;
+      rtmpUrl = session.rtmpUrl;
+      providerReference = session.providerReference;
+    }
 
     const stream = await prisma.liveStream.create({
       data: {
@@ -50,10 +61,10 @@ export class StreamService {
         title: data.title,
         description: data.description,
         thumbnailUrl: data.thumbnailUrl,
-        streamKey: session.streamKey,
-        playbackUrl: session.playbackUrl,
-        rtmpUrl: session.rtmpUrl,
-        providerReference: session.providerReference,
+        streamKey,
+        playbackUrl,
+        rtmpUrl,
+        providerReference,
         status: 'LIVE',
         startedAt: new Date(),
       },
