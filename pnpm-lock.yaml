@@ -213,6 +213,9 @@ importers:
       '@gem/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.19.19
       '@types/react':
         specifier: ^19.0.2
         version: 19.2.15
